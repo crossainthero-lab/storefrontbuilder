@@ -1,4 +1,4 @@
-import React, { Component, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -96,83 +96,24 @@ const starterImages = [
   },
 ];
 
-function linesToArray(value = '') {
-  return String(value)
+function linesToArray(value) {
+  return value
     .split('\n')
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
-function currency(value = '') {
+function currency(value) {
   const numeric = Number.parseFloat(value);
   if (Number.isNaN(numeric)) return value ? `$${value}` : '$0';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numeric);
 }
 
-function createId() {
-  if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
-  return `product-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function normalizeProduct(product = {}) {
-  const normalized = {
-    ...sampleProduct,
-    ...product,
-    reviews: { ...sampleProduct.reviews, ...(product.reviews || {}) },
-    images: Array.isArray(product.images) ? product.images.filter((image) => image?.dataUrl) : starterImages,
-  };
-
-  return {
-    ...normalized,
-    id: normalized.id || createId(),
-    name: String(normalized.name || ''),
-    price: String(normalized.price || ''),
-    compareAtPrice: String(normalized.compareAtPrice || ''),
-    description: String(normalized.description || ''),
-    features: String(normalized.features || ''),
-    variants: String(normalized.variants || ''),
-    selectedVariant: String(normalized.selectedVariant || ''),
-    stockStatus: String(normalized.stockStatus || ''),
-    shipping: String(normalized.shipping || ''),
-    details: String(normalized.details || ''),
-    quantity: Number(normalized.quantity) > 0 ? Number(normalized.quantity) : 1,
-  };
-}
-
 function loadSavedProducts() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(saved) ? saved.map(normalizeProduct) : [];
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   } catch {
-    localStorage.removeItem(STORAGE_KEY);
     return [];
-  }
-}
-
-class RenderFallback extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
-
-  render() {
-    if (this.state.error) {
-      return (
-        <div className="app-shell">
-          <div className="error-card">
-            <p className="eyebrow">Storefront Preview Builder</p>
-            <h1>We could not load the preview.</h1>
-            <p>Clear saved browser data for this page and refresh. The app now guards against malformed saved products.</p>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
   }
 }
 
@@ -189,18 +130,16 @@ function Field({ label, hint, children }) {
 }
 
 function App() {
-  const [product, setProduct] = useState(() => normalizeProduct({ ...sampleProduct, images: starterImages }));
+  const [product, setProduct] = useState(() => ({ ...sampleProduct, images: starterImages }));
   const [savedProducts, setSavedProducts] = useState(loadSavedProducts);
   const [activeImage, setActiveImage] = useState(0);
   const [previewMode, setPreviewMode] = useState('desktop');
   const [expanded, setExpanded] = useState({ details: true, shipping: true });
   const previewRef = useRef(null);
-  const safeReviews = product.reviews || sampleProduct.reviews;
-  const images = Array.isArray(product.images) ? product.images : [];
 
   useEffect(() => {
-    if (activeImage > images.length - 1) setActiveImage(0);
-  }, [activeImage, images.length]);
+    if (activeImage > product.images.length - 1) setActiveImage(0);
+  }, [activeImage, product.images.length]);
 
   const features = useMemo(() => linesToArray(product.features), [product.features]);
   const variants = useMemo(() => linesToArray(product.variants), [product.variants]);
@@ -221,21 +160,21 @@ function App() {
         }),
     );
     const uploaded = await Promise.all(reads);
-    setProduct((current) => ({ ...current, images: [...(Array.isArray(current.images) ? current.images : []), ...uploaded] }));
+    setProduct((current) => ({ ...current, images: [...current.images, ...uploaded] }));
     event.target.value = '';
   };
 
   const removeImage = (indexToRemove) => {
     setProduct((current) => ({
       ...current,
-      images: (Array.isArray(current.images) ? current.images : []).filter((_, index) => index !== indexToRemove),
+      images: current.images.filter((_, index) => index !== indexToRemove),
     }));
   };
 
   const saveProduct = () => {
     const stamped = {
       ...product,
-      id: product.id === 'sample' ? createId() : product.id,
+      id: product.id === 'sample' ? crypto.randomUUID() : product.id,
       savedAt: new Date().toISOString(),
     };
     const next = [stamped, ...savedProducts.filter((item) => item.id !== stamped.id)].slice(0, 12);
@@ -245,7 +184,7 @@ function App() {
   };
 
   const loadProduct = (item) => {
-    setProduct(normalizeProduct(item));
+    setProduct(item);
     setActiveImage(0);
   };
 
@@ -256,7 +195,7 @@ function App() {
   };
 
   const resetToSample = () => {
-    setProduct(normalizeProduct({ ...sampleProduct, id: createId(), images: starterImages }));
+    setProduct({ ...sampleProduct, id: crypto.randomUUID(), images: starterImages });
     setActiveImage(0);
   };
 
@@ -297,7 +236,7 @@ function App() {
     image.src = svgUrl;
   };
 
-  const primaryImage = images[activeImage]?.dataUrl;
+  const primaryImage = product.images[activeImage]?.dataUrl;
 
   return (
     <div className="app-shell">
@@ -341,9 +280,9 @@ function App() {
             </div>
           </Field>
 
-          {images.length > 0 && (
+          {product.images.length > 0 && (
             <div className="uploaded-list">
-              {images.map((image, index) => (
+              {product.images.map((image, index) => (
                 <button
                   className={index === activeImage ? 'uploaded-thumb active' : 'uploaded-thumb'}
                   key={`${image.name}-${index}`}
@@ -401,7 +340,7 @@ function App() {
                 <div className="saved-card" key={item.id}>
                   <button type="button" onClick={() => loadProduct(item)}>
                     <strong>{item.name}</strong>
-                    <span>{currency(item.price)} · {(item.images || []).length} photos</span>
+                    <span>{currency(item.price)} · {item.images.length} photos</span>
                   </button>
                   <Icon name="trash" size={16} onClick={() => deleteProduct(item.id)} />
                 </div>
@@ -445,7 +384,7 @@ function App() {
                     <span className="image-badge"><Icon name="check" size={14} /> Editor's pick</span>
                   </div>
                   <div className="thumbnail-row">
-                    {images.map((image, index) => (
+                    {product.images.map((image, index) => (
                       <button
                         className={index === activeImage ? 'thumb active' : 'thumb'}
                         key={`${image.name}-preview-${index}`}
@@ -463,8 +402,8 @@ function App() {
                   <h2>{product.name || 'Untitled product'}</h2>
                   <div className="review-strip">
                     <span className="stars">★★★★★</span>
-                    <strong>{safeReviews.rating}</strong>
-                    <span>({safeReviews.count} reviews)</span>
+                    <strong>{product.reviews.rating}</strong>
+                    <span>({product.reviews.count} reviews)</span>
                   </div>
                   <div className="price-row">
                     <strong>{currency(product.price)}</strong>
@@ -539,12 +478,12 @@ function App() {
                 <div className="reviews-card">
                   <div>
                     <p className="eyebrow">Customer reviews</p>
-                    <h3>{safeReviews.rating}/5 average rating</h3>
+                    <h3>{product.reviews.rating}/5 average rating</h3>
                   </div>
-                  <div className="review-meter"><span style={{ width: `${(safeReviews.rating / 5) * 100}%` }} /></div>
+                  <div className="review-meter"><span style={{ width: `${(product.reviews.rating / 5) * 100}%` }} /></div>
                   <blockquote>
-                    <Icon name="star" size={18} fill="currentColor" /> “{safeReviews.quote}”
-                    <cite>— {safeReviews.author}</cite>
+                    <Icon name="star" size={18} fill="currentColor" /> “{product.reviews.quote}”
+                    <cite>— {product.reviews.author}</cite>
                   </blockquote>
                 </div>
               </section>
@@ -556,4 +495,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<RenderFallback><App /></RenderFallback>);
+createRoot(document.getElementById('root')).render(<App />);

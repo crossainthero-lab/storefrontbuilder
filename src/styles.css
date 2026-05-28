@@ -141,6 +141,3 @@ cite { color: #81786c; font-style: normal; font-weight: 800; }
   .toggle-group { width: 100%; }
   .toggle-group button { flex: 1; justify-content: center; }
 }
-.error-card { max-width: 720px; margin: 12vh auto; padding: 34px; border: 1px solid rgba(59, 51, 43, .09); border-radius: 30px; background: rgba(255,255,255,.9); box-shadow: 0 24px 70px rgba(43, 36, 28, .08); }
-.error-card h1 { font-size: clamp(2rem, 4vw, 3.5rem); }
-.error-card p:not(.eyebrow) { color: #665f55; line-height: 1.7; }
